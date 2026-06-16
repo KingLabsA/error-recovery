@@ -5,18 +5,15 @@ from __future__ import annotations
 import asyncio
 import functools
 import logging
-import time
-from contextlib import contextmanager
-from typing import Any, Callable, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.table import Table
 
-from error_recovery.error_classifier import ErrorClassifier
 from error_recovery.models import ErrorRecoveryConfig, ErrorTrace, RecoveryResult
-from error_recovery.pattern_matcher import PatternMatcher
 from error_recovery.recovery_engine import ErrorRecoveryEngine
 
 logger = logging.getLogger(__name__)
@@ -151,7 +148,7 @@ class ErrorRecoveryMiddleware:
                 logger.warning("Recovery retry also failed for %s: %s", tool_name, exc)
                 if self.on_failure:
                     self.on_failure(str(exc))
-                raise
+                raise ToolCallError(tool_name, str(exc), context) from exc
 
         if result.recovery_prompt and not result.success:
             logger.info("Returning recovery strategy for %s", tool_name)
@@ -196,7 +193,7 @@ class ErrorRecoveryMiddleware:
                 logger.warning("Async recovery retry failed for %s: %s", tool_name, exc)
                 if self.on_failure:
                     self.on_failure(str(exc))
-                raise
+                raise ToolCallError(tool_name, str(exc), context) from exc
 
         if result.recovery_prompt and not result.success:
             return result.recovery_prompt
